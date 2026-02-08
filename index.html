@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>贪吃蛇 - React</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+        background: #0f172a;
+        color: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .container {
+        width: 560px;
+        max-width: 92vw;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .title {
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .score {
+        font-size: 16px;
+        padding: 6px 10px;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+      }
+      .board {
+        position: relative;
+        background: #111827;
+        border: 1px solid #334155;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(var(--cols), 1fr);
+      }
+      .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        border: 1px solid rgba(51,65,85,0.35);
+        background: #0b1020;
+      }
+      .snake {
+        position: absolute;
+        background: linear-gradient(180deg, #22c55e, #16a34a);
+        border: 1px solid #065f46;
+        border-radius: 6px;
+        width: var(--cell-size);
+        height: var(--cell-size);
+      }
+      .snake.head {
+        background: linear-gradient(180deg, #34d399, #10b981);
+        border-color: #047857;
+      }
+      .food {
+        position: absolute;
+        background: radial-gradient(circle at 30% 30%, #fcd34d, #f59e0b);
+        border: 1px solid #b45309;
+        border-radius: 50%;
+        width: calc(var(--cell-size) * 0.9);
+        height: calc(var(--cell-size) * 0.9);
+        transform: translate(5%, 5%);
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .btn {
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        background: #1e293b;
+        color: #e2e8f0;
+        cursor: pointer;
+      }
+      .btn:hover { filter: brightness(1.1); }
+      .mobileControls {
+        display: grid;
+        grid-template-columns: repeat(3, 64px);
+        grid-template-rows: repeat(3, 64px);
+        gap: 8px;
+        justify-content: center;
+        margin: 10px 0 6px;
+      }
+      .mobileBtn {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+        border: 1px solid #334155;
+        background: radial-gradient(circle at 30% 30%, #1f2937, #0f172a);
+        color: #e2e8f0;
+        font-size: 24px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+      }
+      .mobileBtn:active { filter: brightness(1.15); transform: translateY(1px); }
+      .mobileControls .up { grid-column: 2; grid-row: 1; }
+      .mobileControls .left { grid-column: 1; grid-row: 2; }
+      .mobileControls .down { grid-column: 2; grid-row: 3; }
+      .mobileControls .right { grid-column: 3; grid-row: 2; }
+      .overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dialog {
+        background: #0b1020;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        width: 70%;
+        max-width: 360px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+      }
+      .dialog h2 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      .kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        background: #0b1020;
+        border: 1px solid #334155;
+        color: #93c5fd;
+        border-radius: 6px;
+        padding: 3px 6px;
+      }
+      .msg {
+        margin: 8px 0 12px;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        background: linear-gradient(90deg, #60a5fa, #34d399, #f472b6, #f59e0b);
+        background-size: 200% 200%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        text-shadow: 0 0 14px rgba(99,102,241,0.35), 0 0 26px rgba(34,197,94,0.25);
+        animation: shimmer 3.2s linear infinite, glow 2.2s ease-in-out infinite;
+      }
+      @keyframes shimmer {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+      }
+      @keyframes glow {
+        0% { text-shadow: 0 0 10px rgba(99,102,241,0.25), 0 0 20px rgba(34,197,94,0.2); }
+        100% { text-shadow: 0 0 18px rgba(99,102,241,0.5), 0 0 34px rgba(34,197,94,0.35); }
+      }
+    </style>
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.9/babel.min.js"></script>
+    <script crossorigin src="https://cdn.bootcdn.net/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdn.bootcdn.net/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+    <script crossorigin src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/babel-standalone/7.23.9/babel.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        if (!window.React || !window.ReactDOM || !window.Babel) {
+          var root = document.getElementById('root');
+          if (root) {
+            root.innerHTML = '<div style="padding:12px;background:#1f2937;border:1px solid #334155;border-radius:10px;color:#fca5a5;">网络受限，依赖未加载。请切换网络或稍后再试。</div>';
+          }
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="title">贪吃蛇（React）</div>
+        <div class="score" id="score">分数：0</div>
+      </div>
+      <div id="root"></div>
+      <div class="controls">
+        <button class="btn" id="restartBtn">重新开始</button>
+        <span>操作：<span class="kbd">↑/↓/←/→</span> 或 <span class="kbd">W/A/S/D</span></span>
+      </div>
+      <div class="mobileControls">
+        <button class="mobileBtn up" id="btnUp">↑</button>
+        <button class="mobileBtn left" id="btnLeft">←</button>
+        <button class="mobileBtn down" id="btnDown">↓</button>
+        <button class="mobileBtn right" id="btnRight">→</button>
+      </div>
+    </div>
+    <script type="text/babel">
+      const { useEffect, useMemo, useRef, useState } = React;
+
+      const COLS = 20;
+      const ROWS = 20;
+      const CELL_SIZE = 24;
+      const INITIAL_LEN = 3;
+      const INITIAL_SPEED_MS = 140;
+
+      const DIR = {
+        UP: { x: 0, y: -1, key: "UP" },
+        DOWN: { x: 0, y: 1, key: "DOWN" },
+        LEFT: { x: -1, y: 0, key: "LEFT" },
+        RIGHT: { x: 1, y: 0, key: "RIGHT" },
+      };
+
+      function randomCell(exclude = []) {
+        const excludeKey = new Set(exclude.map(p => `${p.x},${p.y}`));
+        while (true) {
+          const x = Math.floor(Math.random() * COLS);
+          const y = Math.floor(Math.random() * ROWS);
+          const key = `${x},${y}`;
+          if (!excludeKey.has(key)) return { x, y };
+        }
+      }
+
+      function App() {
+        const [cellSize, setCellSize] = useState(CELL_SIZE);
+        const [snake, setSnake] = useState(() => {
+          const midX = Math.floor(COLS / 2);
+          const midY = Math.floor(ROWS / 2);
+          return Array.from({ length: INITIAL_LEN }, (_, i) => ({ x: midX - i, y: midY }));
+        });
+        const [dir, setDir] = useState(DIR.RIGHT);
+        const [food, setFood] = useState(() => randomCell());
+        const [score, setScore] = useState(0);
+        const [gameOver, setGameOver] = useState(false);
+        const [speed, setSpeed] = useState(INITIAL_SPEED_MS);
+        const tickRef = useRef(null);
+        const pendingDirRef = useRef(dir);
+
+        useEffect(() => {
+          const calc = () => {
+            const w = Math.min(window.innerWidth, document.documentElement.clientWidth) * 0.92;
+            const size = Math.max(16, Math.min(32, Math.floor(w / COLS)));
+            return size;
+          };
+          const apply = (s) => {
+            setCellSize(s);
+            document.documentElement.style.setProperty("--cols", COLS);
+            document.documentElement.style.setProperty("--cell-size", s + "px");
+          };
+          apply(calc());
+          const onResize = () => apply(calc());
+          window.addEventListener("resize", onResize);
+          return () => window.removeEventListener("resize", onResize);
+        }, []);
+
+        useEffect(() => {
+          const onKey = (e) => {
+            const k = e.key.toLowerCase();
+            const map = {
+              arrowup: DIR.UP, w: DIR.UP,
+              arrowdown: DIR.DOWN, s: DIR.DOWN,
+              arrowleft: DIR.LEFT, a: DIR.LEFT,
+              arrowright: DIR.RIGHT, d: DIR.RIGHT,
+            };
+            const next = map[k];
+            if (!next) return;
+            const cur = pendingDirRef.current;
+            if ((cur.key === "UP" && next.key === "DOWN")
+              || (cur.key === "DOWN" && next.key === "UP")
+              || (cur.key === "LEFT" && next.key === "RIGHT")
+              || (cur.key === "RIGHT" && next.key === "LEFT")) {
+              return;
+            }
+            pendingDirRef.current = next;
+          };
+          window.addEventListener("keydown", onKey);
+          return () => window.removeEventListener("keydown", onKey);
+        }, []);
+
+        useEffect(() => {
+          if (gameOver) return;
+          if (tickRef.current) clearInterval(tickRef.current);
+          tickRef.current = setInterval(() => {
+            setDir(pendingDirRef.current);
+            setSnake(prev => {
+              const head = prev[0];
+              const nextHead = { x: head.x + pendingDirRef.current.x, y: head.y + pendingDirRef.current.y };
+              if (nextHead.x < 0 || nextHead.x >= COLS || nextHead.y < 0 || nextHead.y >= ROWS) {
+                setGameOver(true);
+                return prev;
+              }
+              const hitSelf = prev.some(p => p.x === nextHead.x && p.y === nextHead.y);
+              if (hitSelf) {
+                setGameOver(true);
+                return prev;
+              }
+              const ateFood = (nextHead.x === food.x && nextHead.y === food.y);
+              if (ateFood) {
+                const newSnake = [nextHead, ...prev];
+                setScore(s => s + 1);
+                setFood(randomCell(newSnake));
+                if ((score + 1) % 5 === 0 && speed > 70) setSpeed(ms => ms - 10);
+                return newSnake;
+              } else {
+                const newSnake = [nextHead, ...prev.slice(0, -1)];
+                return newSnake;
+              }
+            });
+          }, speed);
+          return () => tickRef.current && clearInterval(tickRef.current);
+        }, [speed, gameOver, food]);
+
+        useEffect(() => {
+          const btn = document.getElementById("restartBtn");
+          const restart = () => {
+            const midX = Math.floor(COLS / 2);
+            const midY = Math.floor(ROWS / 2);
+            const initSnake = Array.from({ length: INITIAL_LEN }, (_, i) => ({ x: midX - i, y: midY }));
+            setSnake(initSnake);
+            setDir(DIR.RIGHT);
+            pendingDirRef.current = DIR.RIGHT;
+            setFood(randomCell(initSnake));
+            setScore(0);
+            setSpeed(INITIAL_SPEED_MS);
+            setGameOver(false);
+          };
+          btn.addEventListener("click", restart);
+          return () => btn.removeEventListener("click", restart);
+        }, []);
+
+        useEffect(() => {
+          const setDirSafe = (next) => {
+            const cur = pendingDirRef.current;
+            if ((cur.key === "UP" && next.key === "DOWN")
+              || (cur.key === "DOWN" && next.key === "UP")
+              || (cur.key === "LEFT" && next.key === "RIGHT")
+              || (cur.key === "RIGHT" && next.key === "LEFT")) {
+              return;
+            }
+            pendingDirRef.current = next;
+          };
+          const bu = document.getElementById("btnUp");
+          const bl = document.getElementById("btnLeft");
+          const bd = document.getElementById("btnDown");
+          const br = document.getElementById("btnRight");
+          const hUp = () => setDirSafe(DIR.UP);
+          const hLeft = () => setDirSafe(DIR.LEFT);
+          const hDown = () => setDirSafe(DIR.DOWN);
+          const hRight = () => setDirSafe(DIR.RIGHT);
+          bu.addEventListener("click", hUp);
+          bl.addEventListener("click", hLeft);
+          bd.addEventListener("click", hDown);
+          br.addEventListener("click", hRight);
+          let startX = 0, startY = 0, started = false;
+          const ts = (e) => {
+            const t = e.touches && e.touches[0];
+            if (!t) return;
+            startX = t.clientX;
+            startY = t.clientY;
+            started = true;
+          };
+          const tm = (e) => {
+            if (!started) return;
+            const t = e.touches && e.touches[0];
+            if (!t) return;
+            const dx = t.clientX - startX;
+            const dy = t.clientY - startY;
+            const threshold = 18;
+            if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
+            if (Math.abs(dx) > Math.abs(dy)) {
+              setDirSafe(dx > 0 ? DIR.RIGHT : DIR.LEFT);
+            } else {
+              setDirSafe(dy > 0 ? DIR.DOWN : DIR.UP);
+            }
+            started = false;
+          };
+          window.addEventListener("touchstart", ts, { passive: true });
+          window.addEventListener("touchmove", tm, { passive: true });
+          return () => {
+            bu.removeEventListener("click", hUp);
+            bl.removeEventListener("click", hLeft);
+            bd.removeEventListener("click", hDown);
+            br.removeEventListener("click", hRight);
+            window.removeEventListener("touchstart", ts);
+            window.removeEventListener("touchmove", tm);
+          };
+        }, []);
+
+        useEffect(() => {
+          const scoreEl = document.getElementById("score");
+          scoreEl.textContent = `分数：${score}`;
+        }, [score]);
+
+        const boardStyle = useMemo(() => ({
+          width: COLS * cellSize + "px",
+          height: ROWS * cellSize + "px",
+        }), [cellSize]);
+
+        return (
+          <div className="board" style={boardStyle}>
+            <div className="row" style={{ gridTemplateRows: `repeat(${ROWS}, 1fr)` }}>
+              {Array.from({ length: ROWS * COLS }, (_, idx) => (
+                <div key={idx} className="cell" />
+              ))}
+            </div>
+            {snake.map((p, i) => (
+              <div
+                key={`${p.x},${p.y}-${i}`}
+                className={`snake ${i === 0 ? "head" : ""}`}
+                style={{
+                  left: p.x * cellSize,
+                  top: p.y * cellSize,
+                }}
+              />
+            ))}
+            <div
+              className="food"
+              style={{ left: food.x * cellSize, top: food.y * cellSize }}
+            />
+            {gameOver && (
+              <div className="overlay">
+                <div className="dialog">
+                  <h2>游戏结束</h2>
+                  <p>最终分数：{score}</p>
+                  <div className="msg">{score > 7 ? "杨钰涵好棒！" : "杨钰涵好菜！"}</div>
+                  <button className="btn" onClick={() => document.getElementById("restartBtn").click()}>
+                    重新开始
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+  <script>
+    (function(){
+      if (window.React && window.ReactDOM && window.Babel) return;
+      const COLS=20, ROWS=20, INITIAL_LEN=3, INITIAL_SPEED_MS=140;
+      let cellSize=24, snake=[], dir={x:1,y:0,key:'RIGHT'}, food=null, score=0, speed=INITIAL_SPEED_MS, tick=null, pendingDir=dir, gameOver=false;
+      const root=document.getElementById('root');
+      const scoreEl=document.getElementById('score');
+      const restartBtn=document.getElementById('restartBtn');
+      function calcSize(){const w=Math.min(window.innerWidth, document.documentElement.clientWidth)*0.92; const s=Math.max(16, Math.min(32, Math.floor(w/COLS))); return s;}
+      function applySize(s){cellSize=s; document.documentElement.style.setProperty('--cols', COLS); document.documentElement.style.setProperty('--cell-size', s+'px'); if (board){board.style.width=COLS*s+'px'; board.style.height=ROWS*s+'px';}}
+      function randomCell(exclude){const set=new Set(exclude.map(p=>p.x+','+p.y)); while(true){const x=Math.floor(Math.random()*COLS); const y=Math.floor(Math.random()*ROWS); const k=x+','+y; if(!set.has(k)) return {x,y};}}
+      const board=document.createElement('div'); board.className='board';
+      const row=document.createElement('div'); row.className='row'; row.style.gridTemplateRows='repeat('+ROWS+', 1fr)';
+      const total=ROWS*COLS; let cellsHtml=''; for(let i=0;i<total;i++) cellsHtml+='<div class="cell"></div>';
+      row.innerHTML=cellsHtml; board.appendChild(row); root.innerHTML=''; root.appendChild(board);
+      function renderSnake(){const olds=board.querySelectorAll('.snake'); olds.forEach(n=>n.remove()); for(let i=0;i<snake.length;i++){const p=snake[i]; const n=document.createElement('div'); n.className='snake'+(i===0?' head':''); n.style.left=(p.x*cellSize)+'px'; n.style.top=(p.y*cellSize)+'px'; board.appendChild(n);}}
+      let foodEl=null;
+      function renderFood(){if(foodEl) foodEl.remove(); foodEl=document.createElement('div'); foodEl.className='food'; foodEl.style.left=(food.x*cellSize)+'px'; foodEl.style.top=(food.y*cellSize)+'px'; board.appendChild(foodEl);}
+      let overlay=null;
+      function showGameOver(){overlay=document.createElement('div'); overlay.className='overlay'; const dlg=document.createElement('div'); dlg.className='dialog'; const h2=document.createElement('h2'); h2.textContent='游戏结束'; const p=document.createElement('p'); p.textContent='最终分数：'+score; const msg=document.createElement('div'); msg.className='msg'; msg.textContent= score>7 ? '杨钰涵好棒！' : '杨钰涵好菜！'; const btn=document.createElement('button'); btn.className='btn'; btn.textContent='重新开始'; btn.onclick=restart; dlg.appendChild(h2); dlg.appendChild(p); dlg.appendChild(msg); dlg.appendChild(btn); overlay.appendChild(dlg); board.appendChild(overlay);}
+      function clearGameOver(){ if(overlay){ overlay.remove(); overlay=null; } }
+      function restart(){const midX=Math.floor(COLS/2), midY=Math.floor(ROWS/2); snake=Array.from({length:INITIAL_LEN}, (_,i)=>({x:midX-i,y:midY})); dir={x:1,y:0,key:'RIGHT'}; pendingDir=dir; food=randomCell(snake); score=0; speed=INITIAL_SPEED_MS; gameOver=false; scoreEl.textContent='分数：'+score; clearGameOver(); renderSnake(); renderFood(); startTick();}
+      function startTick(){ if(tick) clearInterval(tick); tick=setInterval(step, speed); }
+      function step(){ if(gameOver) return; dir=pendingDir; const head=snake[0], next={x:head.x+dir.x, y:head.y+dir.y}; if(next.x<0||next.x>=COLS||next.y<0||next.y>=ROWS){ gameOver=true; showGameOver(); return; } if(snake.some(p=>p.x===next.x&&p.y===next.y)){ gameOver=true; showGameOver(); return; } const ate=(next.x===food.x&&next.y===food.y); if(ate){ snake=[next, ...snake]; score+=1; scoreEl.textContent='分数：'+score; food=randomCell(snake); renderFood(); if(score%5===0 && speed>70){ speed-=10; startTick(); } } else { snake=[next, ...snake.slice(0,-1)]; } renderSnake(); }
+      function setDirSafe(next){const cur=pendingDir; if((cur.key==='UP'&&next.key==='DOWN')||(cur.key==='DOWN'&&next.key==='UP')||(cur.key==='LEFT'&&next.key==='RIGHT')||(cur.key==='RIGHT'&&next.key==='LEFT')) return; pendingDir=next;}
+      window.addEventListener('keydown', function(e){const k=e.key.toLowerCase(); if(k==='arrowup'||k==='w') setDirSafe({x:0,y:-1,key:'UP'}); else if(k==='arrowdown'||k==='s') setDirSafe({x:0,y:1,key:'DOWN'}); else if(k==='arrowleft'||k==='a') setDirSafe({x:-1,y:0,key:'LEFT'}); else if(k==='arrowright'||k==='d') setDirSafe({x:1,y:0,key:'RIGHT'});});
+      const bu=document.getElementById('btnUp'), bl=document.getElementById('btnLeft'), bd=document.getElementById('btnDown'), br=document.getElementById('btnRight');
+      if(bu&&bl&&bd&&br){bu.addEventListener('click', ()=>setDirSafe({x:0,y:-1,key:'UP'})); bl.addEventListener('click', ()=>setDirSafe({x:-1,y:0,key:'LEFT'})); bd.addEventListener('click', ()=>setDirSafe({x:0,y:1,key:'DOWN'})); br.addEventListener('click', ()=>setDirSafe({x:1,y:0,key:'RIGHT'}));}
+      let startX=0,startY=0,started=false;
+      window.addEventListener('touchstart', (e)=>{ const t=e.touches&&e.touches[0]; if(!t) return; startX=t.clientX; startY=t.clientY; started=true; }, {passive:true});
+      window.addEventListener('touchmove', (e)=>{ if(!started) return; const t=e.touches&&e.touches[0]; if(!t) return; const dx=t.clientX-startX, dy=t.clientY-startY; const threshold=18; if(Math.abs(dx)<threshold&&Math.abs(dy)<threshold) return; if(Math.abs(dx)>Math.abs(dy)) setDirSafe(dx>0?{x:1,y:0,key:'RIGHT'}:{x:-1,y:0,key:'LEFT'}); else setDirSafe(dy>0?{x:0,y:1,key:'DOWN'}:{x:0,y:-1,key:'UP'}); started=false; }, {passive:true});
+      restartBtn.addEventListener('click', restart);
+      applySize(calc()); window.addEventListener('resize', ()=>applySize(calc()));
+      restart();
+    })();
+  </script>
+  </html>
